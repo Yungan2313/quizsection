@@ -10,21 +10,34 @@ int freechoice = 0;
 int n=3,lottery[100][100],lotteryprice = 500,lotterynspace = 0;
 int lotterynumber,cell;
 int temp,temp2;
-int boostersum,boosterqueue[15];
+int boostersum = 0,boosterqueue[15],boosterslots;
 int mapsituation[8][8],playerlocation;
+int tasksituation[5],mission[5];
+int speedboosteropen = 0,priceboosteropen = 0,areaboosteropen = 0; // boost open close
+/*
+t1 賣50跟熱狗
+t2 開任一booster3次
+t3 將做熱狗的速度提升到滿
+t4 抽10次獎
+t5 在地圖上移動20次
+*/
 void mapinitialization();
 void begin();
-int beginbooster();
 int booster(int *s,int *p, int *a);
-void boosterchoose(int *speedboosteropen,int *priceboosteropen,int *areaboosteropen);
+void boosterchoose();
 void actions(int isc,int ipc);
 void actionsagain(int i);
-void actionsdo(int i,int speedboosteropen,int priceboosteropen,int areaboosteropen);
-void areacheck(int speedboosteropen,int priceboosteropen,int areaboosteropen);
+void actionsdo(int i);
+void boostercheck();
+void areacheck();
 void end();
 int lotterybuild();
 int lotterychoose();
 void boosterjudge();
+int mapsystem();
+void eventcheck();
+int missioncheck();
+int missioncomplete();
 //----------------------------------------------------------------函式
 void mapinitialization(){
     for(int i = 0;i < 8; i++){
@@ -49,6 +62,7 @@ void begin(){
     printf("You need %d minutes to make a hotdog.\n",minutes);
     printf("The price of a hotdog is $%d.\n",price);
     printf("You have %d speed booster(s), %d price booster(s), %d area booster(s).\n",speedbooster,pricebooster,areabooster);
+    printf("Your slots of boosters are %d.\n",boosterslots);
     switch(boosterqueue[0]){
         case 1:
             printf("The oldest booster is speedbooster.");
@@ -61,27 +75,6 @@ void begin(){
             break;
         default:
             printf("You have no booster now.");
-    }
-}
-int beginbooster(){
-    int boostersum = rand()%11+5;
-    int temp;
-    for(int i=0;i<boostersum;i++){
-        temp = rand()%3+1;
-        switch (temp){
-            case 1:
-                speedbooster++;
-                boosterqueue[i] = 1;
-                break;
-            case 2:
-                pricebooster++;
-                boosterqueue[i] = 2;
-                break;
-            case 3:
-                areabooster++;
-                boosterqueue[i] = 3;
-                break;
-        }
     }
 }
 int booster(int *s,int *p, int *a){ // booster choose function
@@ -119,21 +112,21 @@ int booster(int *s,int *p, int *a){ // booster choose function
     }
     return 1;
 }
-void boosterchoose(int *speedboosteropen,int *priceboosteropen,int *areaboosteropen){
+void boosterchoose(){
     int temp;
     printf("Open/Close boosters:\n");
-    *speedboosteropen?printf("  [1] Speed booster (now open)\n"):printf("  [1] Speed booster (now close)\n");
-    *priceboosteropen?printf("  [2] Price booster (now open)\n"):printf("  [2] Price booster (now close)\n");
-    *areaboosteropen?printf("  [3] Area  booster (now open)\n"):printf("  [3] Area  booster (now close)\n");
+    speedboosteropen?printf("  [1] Speed booster (now open)\n"):printf("  [1] Speed booster (now close)\n");
+    priceboosteropen?printf("  [2] Price booster (now open)\n"):printf("  [2] Price booster (now close)\n");
+    areaboosteropen?printf("  [3] Area  booster (now open)\n"):printf("  [3] Area  booster (now close)\n");
     printf("  [4] Finish\n");
     printf("Enter the number(s): ");
-    temp = booster(speedboosteropen,priceboosteropen,areaboosteropen);
+    temp = booster(&speedboosteropen,&priceboosteropen,&areaboosteropen);
     if(temp == 2){
         printf("Invalid input!!!!\n");
-        boosterchoose(speedboosteropen,priceboosteropen,areaboosteropen);
+        boosterchoose();
     }
     else if(temp != 0){
-        boosterchoose(speedboosteropen,priceboosteropen,areaboosteropen);
+        boosterchoose();
     }
 }
 void actions(int isc,int ipc){ // actions choose
@@ -170,7 +163,7 @@ void actionsagain(int i){ // actions invalid,choose again
         actionsagain(i);
     }
 }
-void actionsdo(int i,int speedboosteropen,int priceboosteropen,int areaboosteropen){ // do area actions
+void actionsdo(int i){ // do area actions
     switch (area[i]){
         case 1:
             areasitutaion[i] = 0;
@@ -183,6 +176,9 @@ void actionsdo(int i,int speedboosteropen,int priceboosteropen,int areaboosterop
             if(priceboosteropen){
                 priceboosteropen = 2; //開啟過了
             }
+            if(tasksituation[0] == 1){
+                mission[0]-=(180/minutes)*(speedboosteropen?2:1);
+            }
             break;
         case 2:
             if(dollars<isc){
@@ -192,6 +188,7 @@ void actionsdo(int i,int speedboosteropen,int priceboosteropen,int areaboosterop
             else{
                 if(minutes==1){
                     areasitutaion[i] = 2;
+                    mission[2] = 0; 
                     goto sellhotdog;
                 }
                 else{
@@ -226,16 +223,54 @@ void actionsdo(int i,int speedboosteropen,int priceboosteropen,int areaboosterop
                     if(boosterqueue[i] == 3){
                         temp = i;
                     }
-
                 }
                 for(int i=temp;i<boostersum-1;i++){
                     boosterqueue[i] = boosterqueue[i+1];
                 }
                 boostersum--;
+                if(tasksituation[1] == 1){
+                    mission[1]-=1;
+                }
             }
     }
 }
-void areacheck(int speedboosteropen,int priceboosteropen,int areaboosteropen){ // area check
+void boostercheck(){ // check if booster is used
+    if(speedboosteropen == 2){
+        speedboosteropen = 1;
+        speedbooster -= 1;
+        for(int i=0;i<boostersum;i++){
+            if(boosterqueue[i] == 1){
+                temp = i;
+            }
+
+        }
+        for(int i=temp;i<boostersum-1;i++){
+            boosterqueue[i] = boosterqueue[i+1];
+        }
+        boostersum--;
+        if(tasksituation[1] == 1){
+            mission[1]-=1;
+        }
+    }
+    if(priceboosteropen == 2){
+        priceboosteropen = 1;
+        pricebooster -= 1;
+        for(int i=0;i<boostersum;i++){
+            if(boosterqueue[i] == 2){
+                temp = i;
+            }
+
+        }
+        for(int i=temp;i<boostersum-1;i++){
+            boosterqueue[i] = boosterqueue[i+1];
+        }
+        boostersum--;
+        if(tasksituation[1] == 1){
+            mission[1]-=1;
+        }
+    }
+}
+void areacheck(){ // area check
     int temp;
     printf("Which result of the area you want to check?\n");
     printf("  [1] Area 1\n");
@@ -247,37 +282,37 @@ void areacheck(int speedboosteropen,int priceboosteropen,int areaboosteropen){ /
     scanf("%d",&temp);
     if(temp<0 || temp >6){
         printf("Invalid input!!!!\n");
-        areacheck(speedboosteropen,priceboosteropen,areaboosteropen);
+        areacheck();
     }
     switch (areasitutaion[temp-1]){
         case 0:
             printf("You make %d hotdogs here!\n", (180/minutes)*(speedboosteropen?2:1));
             printf("You earn $%d!\n", (180/minutes)*price*(speedboosteropen?2:1)*(priceboosteropen?2:1));
-            areacheck(speedboosteropen,priceboosteropen,areaboosteropen);
+            areacheck();
             break;
         case 1:
             printf("Can't you tell how poor you are?\n");
             printf("Go vending your hotdogs instead of thinking about self-improvement!\n");
             printf("You make %d hotdogs here!\n", (180/minutes)*(speedboosteropen?2:1));
             printf("You earn $%d!\n", (180/minutes)*price*(speedboosteropen?2:1)*(priceboosteropen?2:1));
-            areacheck(speedboosteropen,priceboosteropen,areaboosteropen);
+            areacheck();
             break;
         case 2:
             printf("Do you want to travel through time?\n");
             printf("GO WORK!!\n");
             printf("You make %d hotdogs here!\n", (180/minutes)*(speedboosteropen?2:1));
             printf("You earn $%d!\n", (180/minutes)*price*(speedboosteropen?2:1)*(priceboosteropen?2:1));
-            areacheck(speedboosteropen,priceboosteropen,areaboosteropen);
+            areacheck();
             break;
         case 3:
             printf("You glimpse the secret of wind.\n");
             printf("Your hands can move faster now.\n");
-            areacheck(speedboosteropen,priceboosteropen,areaboosteropen);
+            areacheck();
             break;
         case 4:
             printf("You feel the soul of the ingredients.\n");
             printf("Your hotdogs are more appetizing now.\n");
-            areacheck(speedboosteropen,priceboosteropen,areaboosteropen);
+            areacheck();
             break;
         case 5:
             if(!areaboosteropen){
@@ -287,12 +322,12 @@ void areacheck(int speedboosteropen,int priceboosteropen,int areaboosteropen){ /
                 printf("You make %d hotdogs here!\n", (180/minutes)*(speedboosteropen?2:1));
                 printf("You earn $%d!\n", (180/minutes)*price*(speedboosteropen?2:1)*(priceboosteropen?2:1));
             }
-            areacheck(speedboosteropen,priceboosteropen,areaboosteropen);
+            areacheck();
             break;
         case 6:
             if(!areaboosteropen){
                 printf("Invalid input!!!!\n");
-                areacheck(speedboosteropen,priceboosteropen,areaboosteropen);
+                areacheck();
                 break;
             }
             else{
@@ -300,7 +335,7 @@ void areacheck(int speedboosteropen,int priceboosteropen,int areaboosteropen){ /
             }
         default:
             printf("Invalid input!!!!\n");
-            areacheck(speedboosteropen,priceboosteropen,areaboosteropen);
+            areacheck();
             break;   
     }
 }
@@ -392,10 +427,16 @@ int lotterybuild(){ // lotterybuild
     }
     else if(freechoice > 0){
         freechoice -= 1;
+        if(tasksituation[3] == 1){
+            mission[3]--;
+        }
     }
     else{
         dollars -= lotteryprice;
         lotteryprice +=500;
+        if(tasksituation[3] == 1){
+            mission[3]--;
+        }
     }
     lotterychoose(temp);
 }
@@ -510,31 +551,31 @@ int lotterychoose(){ // do lottery choose
             break;
     }
 }
-void boosterjudge(){
-    if(boostersum>15){
-        printf("Oops! Your boosters are too musch!");
+void boosterjudge(){ // booster out of slots judge
+    if(boostersum>boosterslots){
+        printf("Oops! Your boosters are too musch!\n");
         boostersum--;
         switch(boosterqueue[0]){
             case 1:
-                printf("You lose a speedbooster!");
+                printf("You lose a speedbooster!\n");
                 speedbooster--;
                 break;
             case 2:
-                printf("You lose a pricebooster!");
+                printf("You lose a pricebooster!\n");
                 pricebooster--;
                 break;
             case 3:
-                printf("You lose a areabooster!");
+                printf("You lose a areabooster!\n");
                 areabooster--;
                 break;
         }
-        for(int i=0; i<14;i++){
+        for(int i=0; i<boosterslots-1;i++){
             boosterqueue[i] = boosterqueue[i+1];
         }
     }
 
 }
-void mapsystem(){
+int mapsystem(){ // mapsystem
     for(int i=0; i<8; i++){
         for(int j=0; j<8; j++){
             switch(mapsituation[i][j]){
@@ -565,18 +606,60 @@ void mapsystem(){
     printf("  [4]right.\n");
     printf("  [5]quit.\n");
     printf("Enter the number(s) if you want to move: ");
-    scanf("%d", &temp2);
-    switch (temp2){
+    scanf("%d", &temp);
+    if(temp == 1 || temp == 2 || temp == 3 || temp == 4){
+        if(tasksituation[4] == 1){
+            mission[4]--;
+        }
+        if(dollars<25){
+            printf("You have no money!\n");
+            return 0;
+        }
+    }
+    switch (temp){
         case 1:
+            if(playerlocation/8==0){
+                printf("Oops!you are gonna bump into the edge!please select your action again!\n");
+                goto mapmoveinvalid;
+            }
+            mapsituation[playerlocation/8][playerlocation%8] = 0;
+            playerlocation-=8;
+            eventcheck();
+            // mapsituation[playerlocation/8][playerlocation%8] = 1;
+            dollars-=25;
             mapsystem();
             break;
         case 2:
+            if(playerlocation/8==7){
+                printf("Oops!you are gonna bump into the edge!please select your action again!\n");
+                goto mapmoveinvalid;
+            }
+            mapsituation[playerlocation/8][playerlocation%8] = 0;
+            playerlocation+=8;
+            eventcheck();
+            dollars-=25;
             mapsystem();
             break;
         case 3:
+            if(playerlocation%8==0){
+                printf("Oops!you are gonna bump into the edge!please select your action again!\n");
+                goto mapmoveinvalid;
+            }
+            mapsituation[playerlocation/8][playerlocation%8] = 0;
+            playerlocation--;
+            eventcheck();
+            dollars-=25;
             mapsystem();
             break;
         case 4:
+            if(playerlocation%8==7){
+                printf("Oops!you are gonna bump into the edge!please select your action again!\n");
+                goto mapmoveinvalid;
+            }
+            mapsituation[playerlocation/8][playerlocation%8] = 0;
+            playerlocation++;
+            eventcheck();
+            dollars-=25;
             mapsystem();
             break;
         case 5:
@@ -586,21 +669,275 @@ void mapsystem(){
             goto mapmoveinvalid;
     }
 }
+void mapjudge(){  // judge if there are no money bags and booster on the map
+    int temp = 0;
+    for(int i=0;i<8;i++){
+        for(int j = 0; j < 8 ; j++){
+            if(mapsituation[i][j] == 2){
+                temp = 1;
+                break;
+            }
+        }
+        if(temp == 1){
+            break;
+        }
+    }
+    if(temp == 0){
+        while(1){
+            temp = rand()%64;
+            if(mapsituation[temp/8][temp%8]==0){
+                printf("New money bags appear!\n");
+                mapsituation[temp/8][temp%8] = 2;
+                break;
+            }
+        }
+    }
+    temp = 0;
+    for(int i=0;i<8;i++){
+        for(int j = 0; j < 8 ; j++){
+            if(mapsituation[i][j] == 3){
+                temp = 1;
+                break;
+            }
+        }
+        if(temp == 1){
+            break;
+        }
+    }
+    if(temp == 0){
+        while(1){
+            temp = rand()%64;
+            if(mapsituation[temp/8][temp%8]==0){
+                printf("New booster appear!\n");
+                mapsituation[temp/8][temp%8] = 3;
+                break;
+            }
+        }
+    }
+}
+void eventcheck(){ // check if player step on the event block
+    int temp;
+    switch(mapsituation[playerlocation/8][playerlocation%8]){  // 2 == M(Money) 3 == B(Booster) 4 == T(Task)
+        case 2:
+            temp = (playerlocation/8)*(playerlocation%8)*10;
+            printf("You got a money bag!\n");
+            dollars += temp;
+            printf("You earn $%d!Now you have $%d dollars now.\n",temp,dollars);
+            break;
+        case 3:
+            temp = rand()%3+1;
+            switch (temp){
+                case 1:
+                    speedbooster++;
+                    boostersum++;
+                    printf("You got a speedbooster!\n");
+                    printf("Now you have %d speedboosters now.\n",speedbooster);
+                    boosterjudge();
+                    break;
+                case 2:
+                    pricebooster++;
+                    boostersum++;
+                    printf("You got a pricebooster!\n");
+                    printf("Now you have %d priceboosters now.\n",pricebooster);
+                    boosterjudge();
+                    break;
+                case 3:
+                    areabooster++;
+                    boostersum++;
+                    printf("You got a areabooster!\n");
+                    printf("Now you have %d areaboosters now.\n",areabooster);
+                    boosterjudge();
+                    break;
+            }
+            break;
+        case 4:
+            printf("You got a mission now!\n");
+            temp = 0;
+            while(1){
+                temp = rand()%5;
+                if(tasksituation[temp] != 2){
+                    break;
+                }
+            }
+            tasksituation[temp] = 1;
+            switch(temp+1){
+                case 1:
+                    printf("mission: sells 50 hotdogs.\n");
+                    printf("difficulty:*\n");
+                    printf("reward:$500 dollars\n");
+                    break;
+                case 2:
+                    printf("mission: open any of the boosters three times.\n");
+                    printf("difficulty:****\n");
+                    printf("reward:speedbooster*1 pricebooster*1 areabooster*1\n");
+                    break;
+                case 3:
+                    printf("mission: max your cooking speed.\n");
+                    printf("difficulty:*****\n");
+                    printf("reward:$50000\n");
+                    break;
+                case 4:
+                    printf("mission: open the lottery 10 times.\n");
+                    printf("difficulty:***\n");
+                    printf("reward:3 extra choice\n");
+                    break;
+                case 5:
+                    printf("mission: move twenty times on the map.\n");
+                    printf("difficulty:**\n");
+                    printf("reward:2 more money bags and booster appear the map\n");
+                    break;
+            }
+            printf("You can check your mission before taking your actions in the area.\n");
+            break;
+    }
+    mapsituation[playerlocation/8][playerlocation%8] = 1;
+}
+int missioncheck(){ //check player's mission situation
+    int temp;
+    printf("Do you want to check your mission?\n");
+    printf("  [1]Yes\n");
+    printf("  [2]NO\n");
+    printf("Enter the number(s): ");
+    scanf("%d",&temp);
+    if(temp == 2){
+        return 0;
+    }
+    temp = 5;
+    for(int i=0; i<5;i++){
+        if(tasksituation[i] == 0){
+            temp = 6;
+        }
+        else if(tasksituation[i] == 1){
+            temp = i;
+            break;
+        }
+    }
+    if(temp == 5){
+        printf("Good job!You finish all the mission!\n");
+        return 0;
+    }
+    else if(temp == 6){
+        printf("You have no mission now!\n");
+    }
+    else{
+        printf("You haven't finish your mission yet!\n");
+        printf("Keep going!\n");
+        printf("Your ");
+        switch(temp+1){
+                case 1:
+                    printf("mission: sells 50 hotdogs.\n");
+                    printf("difficulty:*\n");
+                    printf("reward:$500 dollars\n");
+                    printf("%d/50 left.",mission[0]);
+                    break;
+                case 2:
+                    printf("mission: open any of the boosters 3 times.\n");
+                    printf("difficulty:****\n");
+                    printf("reward:speedbooster*1 pricebooster*1 areabooster*1\n");
+                    printf("%d/3 left.",mission[1]);
+                    break;
+                case 3:
+                    printf("mission: max your cooking speed.\n");
+                    printf("difficulty:*****\n");
+                    printf("reward:$50000\n");
+                    printf("You still need to improve %d times.\n",minutes-1);
+                    break;
+                case 4:
+                    printf("mission: open the lottery 10 times.\n");
+                    printf("difficulty:***\n");
+                    printf("reward:3 extra choice\n");
+                    printf("%d/10 left.",mission[3]);
+                    break;
+                case 5:
+                    printf("mission: move 20 times on the map.\n");
+                    printf("difficulty:**\n");
+                    printf("reward:2 more money bags and booster appear the map\n");
+                    printf("%d/20 left.",mission[4]);
+                    break;
+            }
+    }
+}
+int missioncomplete(){ // check if mission is complete
+    int temp = 0;
+    for(int i=0; i<5;i++){
+        if(tasksituation[i] == 1){
+            temp = i;
+            break;
+        }
+    }
+    if(mission[temp] <= 0){
+        printf("Well done!You complete the mission!\n");
+        switch(temp+1){
+            case 1:
+                printf("You earn $500 dollars!\n");
+                dollars+=500;
+                tasksituation[temp] = 2;
+                break;
+            case 2:
+                printf("You get the boosters!\n");
+                speedbooster++;
+                pricebooster++;
+                areabooster++;
+                tasksituation[temp] = 2;
+                break;
+            case 3:
+                printf("You earn $50000 dollars!\n");
+                dollars+=50000;
+                tasksituation[temp] = 2;
+                break;
+            case 4:
+                printf("You get 3 extra choice!\n");
+                freechoice++;
+                tasksituation[temp] = 2;
+                break;
+            case 5:
+                printf("2 more money bags and boosters appear now!\n");
+                for(int i=0; i<2;i++){
+                    while(1){
+                        temp = rand()%64;
+                        if(mapsituation[temp/8][temp%8]==0){
+                            mapsituation[temp/8][temp%8] = 2;
+                            break;
+                        }
+                    }
+                }
+                for(int i=0; i<2;i++){
+                    while(1){
+                        temp = rand()%64;
+                        if(mapsituation[temp/8][temp%8]==0){
+                            mapsituation[temp/8][temp%8] = 3;
+                            break;
+                        }
+                    }
+                }
+                tasksituation[temp] = 2;
+                break;
+        }
+        printf("New mission now appear on the map!\n");
+        while(1){
+            temp = rand()%64;
+            if(mapsituation[temp/8][temp%8]==0){
+                mapsituation[temp/8][temp%8] = 4;
+                break;
+            }
+        }
+    }
+}
 //----------------------------------------------------------------
 int  main(){
     srand(time(NULL));
     int temp,temp2; // orgin
-    int speedboosteropen = 0,priceboosteropen = 0,areaboosteropen = 0; // boost open close
     for(int i = 0;i < n; i++){ //陣列初始化
         for(int j = 0;j < n; j++){
             lottery[i][j] = 1;
         }
     }
+    mission[0] = 50,mission[1] = 3,mission[2] = 1,mission[3] = 10,mission[4] = 20;
     mapinitialization();
+    boosterslots = rand()%11+5;
     printf("Welcome, young boss!\n");
     while(1){
         dollarsum = 0;
-        boostersum = beginbooster();
         begin();
         boosterchoose(&speedboosteropen,&priceboosteropen,&areaboosteropen);
         if(speedbooster == 0){
@@ -612,43 +949,19 @@ int  main(){
         if(areabooster == 0){
             areaboosteropen = 0;
         }
+        missioncheck();
         actions(isc,ipc);
         for(int i=0;i<4;i++){
-            actionsdo(i,speedboosteropen,priceboosteropen,areaboosteropen);
+            actionsdo(i);
         }
-        if(speedboosteropen == 2){
-            speedboosteropen = 1;
-            speedbooster -= 1;
-            for(int i=0;i<boostersum;i++){
-                if(boosterqueue[i] == 1){
-                    temp = i;
-                }
-
-            }
-            for(int i=temp;i<boostersum-1;i++){
-                boosterqueue[i] = boosterqueue[i+1];
-            }
-            boostersum--;
-        }
-        if(priceboosteropen == 2){
-            priceboosteropen = 1;
-            pricebooster -= 1;
-            for(int i=0;i<boostersum;i++){
-                if(boosterqueue[i] == 2){
-                    temp = i;
-                }
-
-            }
-            for(int i=temp;i<boostersum-1;i++){
-                boosterqueue[i] = boosterqueue[i+1];
-            }
-            boostersum--;
-        }
+        boostercheck();
         areasitutaion[4] = 5;
         areasitutaion[5] = 6;
         printf("Well done, you earn $%d today.\n",dollarsum);
-        areacheck(speedboosteropen,priceboosteropen,areaboosteropen);
+        areacheck();
+        mapjudge();
         mapsystem();
+        missioncomplete();
         end();
         lotterybuild();        
     }
