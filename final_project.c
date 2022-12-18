@@ -133,7 +133,7 @@ void actions(int isc,int ipc){ // actions choose
     printf("Actions you can take for each area:\n");
     printf("  [1] Sell the hotdogs\n");
     printf("  [2] Improve your cooking speed\n");
-    printf("      (- $%d, - $%d, - $%d, - $%d for next four upgrades)\n", isc,isc*2 ,isc*4 ,isc*8 );
+    printf("      (- $%d, - $%d, - $%d, - $%d for next four upgrades,%d/14 of improvespace)\n", isc,isc*2 ,isc*4 ,isc*8,minutes-1);
     printf("  [3] Improve your hotdog flavor\n");
     printf("      (- $%d, - $%d, - $%d, - $%d for next four upgrades)\n", ipc, ipc*2, ipc*4, ipc*8);
     printf("Enter the number(s): ");
@@ -408,6 +408,7 @@ int lotterybuild(){ // lotterybuild
     printf("You can choose\n");
     freechoice? printf("  [number on cell] to open (- $0)\n"):printf("  [number on cell] to open (- $%d)\n", lotteryprice);
     printf("  [0] to continue the game\n");
+    printf("You have $%d money now.\n", dollars);
     printf("Enter the number(s): ");
     scanf("%d",&temp);
     if(temp == 0){
@@ -440,14 +441,14 @@ int lotterybuild(){ // lotterybuild
     }
     lotterychoose(temp);
 }
-int lotterychoose(){ // do lottery choose
+int lotterychoose(int temp){ // do lottery choose
     lottery[(temp-1)/n][(temp-1)%n] = 0;
     cell = temp;
     lotterynumber = rand()%9+1;
     temp = cell;
     switch(lotterynumber){
         case 1:
-            printf("Fortune, fortune! You get $%d!\n", price*100);
+            printf("Fortune, fortune! You get $%d!\n", n*1000);
             dollars += price*100;
             lotterybuild();
             break;
@@ -464,6 +465,7 @@ int lotterychoose(){ // do lottery choose
                 temp2 = (temp-1)/n - 1;
             }
             if(lottery[temp2][(temp-1)%n] == 0){
+                printf("Another open on up!\n");
                 printf("Bad Luck :(\n");
             }
             else{
@@ -482,6 +484,7 @@ int lotterychoose(){ // do lottery choose
                 temp2 = (temp-1)/n + 1;
             }
             if(lottery[temp2][(temp-1)%n] == 0){
+                printf("Another open on down!\n");
                 printf("Bad Luck :(\n");
             }
             else{
@@ -500,6 +503,7 @@ int lotterychoose(){ // do lottery choose
                 temp2 = (temp-1)%n - 1;
             }
             if(lottery[(temp-1)/n][temp2] == 0){
+                printf("Another open on left!\n");
                 printf("Bad Luck :(\n");
             }
             else{
@@ -518,6 +522,7 @@ int lotterychoose(){ // do lottery choose
                 temp2 = (temp-1)%n + 1;
             }
             if(lottery[(temp-1)/n][temp2] == 0){
+                printf("Another open on right!\n");
                 printf("Bad Luck :(\n");
             }
             else{
@@ -531,6 +536,7 @@ int lotterychoose(){ // do lottery choose
         case 7:
             printf("You get a speedbooster!!\n");
             speedbooster += 1;
+            boosterqueue[boostersum] = 1;
             boostersum++;
             boosterjudge();
             lotterybuild();
@@ -538,6 +544,7 @@ int lotterychoose(){ // do lottery choose
         case 8:
             printf("You get a pricebooster!!\n");
             pricebooster += 1;
+            boosterqueue[boostersum] = 2;
             boostersum++;
             boosterjudge();
             lotterybuild();
@@ -545,6 +552,7 @@ int lotterychoose(){ // do lottery choose
         case 9:
             printf("You get a areabooster!!\n");
             areabooster +=1;
+            boosterqueue[boostersum] = 3;
             boostersum++;
             boosterjudge();
             lotterybuild();
@@ -605,6 +613,7 @@ int mapsystem(){ // mapsystem
     printf("  [3]left.\n");
     printf("  [4]right.\n");
     printf("  [5]quit.\n");
+    printf("You have $%d money now.\n", dollars);
     printf("Enter the number(s) if you want to move: ");
     scanf("%d", &temp);
     if(temp == 1 || temp == 2 || temp == 3 || temp == 4){
@@ -729,6 +738,7 @@ void eventcheck(){ // check if player step on the event block
             switch (temp){
                 case 1:
                     speedbooster++;
+                    boosterqueue[boostersum] = 1;
                     boostersum++;
                     printf("You got a speedbooster!\n");
                     printf("Now you have %d speedboosters now.\n",speedbooster);
@@ -736,6 +746,7 @@ void eventcheck(){ // check if player step on the event block
                     break;
                 case 2:
                     pricebooster++;
+                    boosterqueue[boostersum] = 2;
                     boostersum++;
                     printf("You got a pricebooster!\n");
                     printf("Now you have %d priceboosters now.\n",pricebooster);
@@ -743,6 +754,7 @@ void eventcheck(){ // check if player step on the event block
                     break;
                 case 3:
                     areabooster++;
+                    boosterqueue[boostersum] = 3;
                     boostersum++;
                     printf("You got a areabooster!\n");
                     printf("Now you have %d areaboosters now.\n",areabooster);
@@ -802,6 +814,7 @@ int missioncheck(){ //check player's mission situation
     if(temp == 2){
         return 0;
     }
+    missioncomplete();
     temp = 5;
     for(int i=0; i<5;i++){
         if(tasksituation[i] == 0){
@@ -878,6 +891,11 @@ int missioncomplete(){ // check if mission is complete
                 speedbooster++;
                 pricebooster++;
                 areabooster++;
+                for(int i=0; i<3; i++){
+                    boostersum++;
+                    boosterjudge();
+                    boosterqueue[boostersum-1] = i;
+                }
                 tasksituation[temp] = 2;
                 break;
             case 3:
@@ -887,11 +905,12 @@ int missioncomplete(){ // check if mission is complete
                 break;
             case 4:
                 printf("You get 3 extra choice!\n");
-                freechoice++;
+                freechoice+=3;
                 tasksituation[temp] = 2;
                 break;
             case 5:
                 printf("2 more money bags and boosters appear now!\n");
+                tasksituation[temp] = 2;
                 for(int i=0; i<2;i++){
                     while(1){
                         temp = rand()%64;
@@ -910,7 +929,6 @@ int missioncomplete(){ // check if mission is complete
                         }
                     }
                 }
-                tasksituation[temp] = 2;
                 break;
         }
         printf("New mission now appear on the map!\n");
@@ -961,7 +979,6 @@ int  main(){
         areacheck();
         mapjudge();
         mapsystem();
-        missioncomplete();
         end();
         lotterybuild();        
     }
