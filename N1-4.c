@@ -10,7 +10,7 @@ int main(){
     basic[len] = '\0';
     gets(search);
     slen = strlen(search);
-    search[slen] = '\0';\
+    search[slen] = '\0';
     for(int i = 0; i < len-1; i++){
         if(basic[i] == search[nows] && basic[i] != ' '){
             nowslen++;
